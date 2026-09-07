@@ -1,79 +1,32 @@
 ---
-description: Классификация интента, фазы explore/complete, узкий набор @-правил из репозитория
+description: Классификация интента и выбор узкого набора правил/skills
 alwaysApply: true
 ---
 
 # Task Intent Routing
 
-Цель: определить тип задачи и подключать **только релевантные** правила из `.cursor/rules/` через `@`, не смешивая с устаревшими копиями User Rules вне репо.
+Перед правками: интент (`planning` | `architecture` | `bugfix` | `feature` | `refactor` | `performance` | `api` | `database` | `docs` | `infra/ci`).
 
-Если в репозитории есть **локальные overrides** (`*.local.mdc` — пути документации, CI, стек, high-risk), подключать их через `@` там, где они перечислены в оркестраторе; в строках ниже перечислены только файлы из переносимого пакета `rules/global/`.
+**Docs before code:** для `feature`, `refactor`, `bugfix`, `api`, `database`, `architecture` — сначала обновить SoT-docs, затем код (`documentation-first.mdc` § gate). Исключения — только там же.
 
-## 1) Обязательная классификация
+## Маршрутизация
 
-Перед правками выбрать один первичный интент:
+- `planning`: `documentation-first.mdc`, `token-economy.mdc`, `architecture-gates.mdc`; при межмодульных связях / Service/Repository / `src/` → `modular-monolith-boundaries.mdc`
+- `architecture`: `architecture-gates.mdc`, `modular-monolith-boundaries.mdc`, `architecture-decision-log.mdc`, `high-risk-review-packet.mdc`, `risk-scoring-and-review-depth.mdc`, `definition-of-done-gates.mdc`
+- `bugfix`: `documentation-first.mdc`, `testing-and-testcases.mdc`, `lint-scoped-checks.mdc`, `code-quality-gates.mdc`, `definition-of-done-gates.mdc`; при затронутом API → `api-contract-gate.mdc`, `deprecation-and-backward-compatibility.mdc`
+- `feature`: `documentation-first.mdc`, `testing-and-testcases.mdc`, `code-quality-gates.mdc`, `definition-of-done-gates.mdc` + project i18n/stack rules; backend path → `highload-io-memory.mdc`, `highload-resilience-deps.mdc`; при затронутом API → `api-contract-gate.mdc`, `deprecation-and-backward-compatibility.mdc`; при межмодульных связях / Service/Repository / `src/` → `modular-monolith-boundaries.mdc`
+- `refactor`: `documentation-first.mdc`, `code-cleanliness.mdc`, skill `code-quality-review`, `code-quality-gates.mdc`, `lint-scoped-checks.mdc`, `risk-scoring-and-review-depth.mdc`; при затронутом API → `api-contract-gate.mdc`, `deprecation-and-backward-compatibility.mdc`; при межмодульных связях / Service/Repository / `src/` → `modular-monolith-boundaries.mdc`
+- `performance`: `algorithm-complexity-selection.mdc`, `highload-io-memory.mdc`, `highload-resilience-deps.mdc`, `high-risk-review-packet.mdc`, `risk-scoring-and-review-depth.mdc`
+- `api`: `api-contract-gate.mdc`, `deprecation-and-backward-compatibility.mdc`, `highload-io-memory.mdc`, `highload-resilience-deps.mdc`, `high-risk-review-packet.mdc`, `testing-and-testcases.mdc`, `code-quality-gates.mdc`
+- `database`: `migrations-doc-and-notify.mdc`, `deprecation-and-backward-compatibility.mdc`, `highload-io-memory.mdc`, `high-risk-review-packet.mdc`, `testing-and-testcases.mdc`; при затронутом API/DTO → `api-contract-gate.mdc`
 
-- `planning`
-- `architecture`
-- `bugfix`
-- `feature`
-- `refactor`
-- `performance`
-- `api`
-- `database`
-- `docs`
-- `infra/ci`
+**API primacy:** существующий контракт не менять без явного указания пользователя; при конфликте — вопрос + варианты (см. `api-contract-gate.mdc` §0).
+- `docs`: `documentation-first.mdc`, `token-economy.mdc`
+- `infra/ci`: `ci-cd.mdc`, `code-quality-gates.mdc`, `secrets-and-env.mdc`
 
-Если интент неочевиден — 1–2 уточняющих вопроса; иначе выбрать интент и продолжить.
+**Стек** (React, backend, vanilla HTML, …) — **только project rules** (`project-rules-scope.mdc`).  
+**Домен** (СБИС, YooKassa, …) — project skills / domain rules, не global.
 
-## 2) Маршрутизация по интенту
+## Фиксация
 
-Список — логические зависимости. Файлы ниже не обязаны быть в `alwaysApply`; подключать через `@.cursor/rules/<имя>.mdc` при работе и перед фазой `complete`.
-
-- `planning`: `documentation-index-first.mdc`, `token-economy.mdc` (часть ядра уже в контексте)
-- `architecture`: `architecture-planning-gate.mdc`, `high-risk-review-packet.mdc`, `high-risk-final-answer-links.mdc`, `context-first-architecture.mdc`, `nfr-priorities-and-quality-attributes.mdc`, `monolith-first-and-split-triggers.mdc`, `coupling-cohesion-budget.mdc`, `adr-lifecycle-and-expiration.mdc`, `architecture-decision-log.mdc`, `evolutionary-architecture-runway.mdc`, `fitness-functions.mdc`, `api-gateway-thin-rule.mdc` (если есть gateway), `architecture-observability-gate.mdc`, `deprecation-and-backward-compatibility.mdc`, `risk-scoring-and-review-depth.mdc`, `definition-of-done-gates.mdc`
-- `bugfix`: `documentation-first.mdc`, `testing-and-testcases.mdc`, `lint-scoped-checks.mdc`, `code-quality-gates.mdc`, `definition-of-done-gates.mdc`
-- `feature`: `documentation-first.mdc`, `i18n-bilingual-features.mdc`, `testing-and-testcases.mdc`, `e2e-testcases-doc.mdc`, `code-quality-gates.mdc`, `definition-of-done-gates.mdc`
-- `refactor`: `documentation-first.mdc`, `code-cleanliness.mdc`, `code-quality-gates.mdc`, `testing-and-testcases.mdc`, `lint-scoped-checks.mdc`, `risk-scoring-and-review-depth.mdc`
-- `performance`: `algorithm-complexity-selection.mdc`, `high-risk-review-packet.mdc`, `high-risk-final-answer-links.mdc`, `risk-scoring-and-review-depth.mdc`, `definition-of-done-gates.mdc`
-- `api`: `api-contract-gate.mdc`, `deprecation-and-backward-compatibility.mdc`, `high-risk-review-packet.mdc`, `high-risk-final-answer-links.mdc`, `testing-and-testcases.mdc`, `code-quality-gates.mdc`, `migrations-doc-and-notify.mdc` (по необходимости)
-- `database`: `migrations-doc-and-notify.mdc`, `deprecation-and-backward-compatibility.mdc`, `high-risk-review-packet.mdc`, `high-risk-final-answer-links.mdc`, `risk-scoring-and-review-depth.mdc`, `testing-and-testcases.mdc`
-- `docs`: `documentation-index-first.mdc`, `token-economy.mdc`, `communication-and-process.mdc`
-- `infra/ci`: `ci-cd.mdc`, `code-quality-gates.mdc`, `secrets-and-env.mdc`, `risk-scoring-and-review-depth.mdc`
-
-## 3) Старт чата и фазы `explore` / `complete`
-
-- В начале зафиксировать: `Intent`, `Risk`, `Phase`.
-- **`explore`:** короткие ответы; полный DoD из `definition-of-done-gates.mdc` не разворачивать без запроса или без `Phase: complete`.
-- **`complete`:** DoD + `@` по §2 для текущего интента и при необходимости `anti-hallucination-verification.mdc`.
-
-## 4) Источник правил
-
-- Текст правил — из `<repo>/.cursor/rules/`.
-- User/Global правила Cursor не использовать как норму в задаче — см. `project-rules-bootstrap.mdc`.
-
-## 5) Таблица `@` по интенту (минимум перед `complete`)
-
-| Интент | Обязательно подключить `@` перед финальным ответом |
-|--------|-----------------------------------------------------|
-| `planning` | `documentation-index-first.mdc`; при решениях — `architecture-planning-gate.mdc` |
-| `architecture` | весь список §2 для `architecture` |
-| `bugfix` | `documentation-first.mdc`, `testing-and-testcases.mdc`, `lint-scoped-checks.mdc`, `code-quality-gates.mdc`, `definition-of-done-gates.mdc` |
-| `feature` | как `bugfix` + `i18n-bilingual-features.mdc`, `e2e-testcases-doc.mdc` |
-| `refactor` | `documentation-first.mdc`, `code-cleanliness.mdc`, `code-quality-gates.mdc`, `testing-and-testcases.mdc`, `lint-scoped-checks.mdc`, `risk-scoring-and-review-depth.mdc` |
-| `performance` | `algorithm-complexity-selection.mdc`, high-risk packet + links (§2), `risk-scoring-and-review-depth.mdc`, `definition-of-done-gates.mdc` |
-| `api` | `api-contract-gate.mdc`, `deprecation-and-backward-compatibility.mdc`, high-risk packet + links, `testing-and-testcases.mdc`, `code-quality-gates.mdc` |
-| `database` | `migrations-doc-and-notify.mdc`, `deprecation-and-backward-compatibility.mdc`, high-risk packet + links, `risk-scoring-and-review-depth.mdc`, `testing-and-testcases.mdc` |
-| `docs` | `documentation-index-first.mdc`, `communication-and-process.mdc` |
-| `infra/ci` | `ci-cd.mdc`, `code-quality-gates.mdc`, `secrets-and-env.mdc`, `risk-scoring-and-review-depth.mdc` |
-
-При `Risk: high` добавить через `@` все high-risk артефакты, которые приняты в **этом** репозитории (часто — локальные `high-risk-*.local.mdc` с путями и machine-check).
-
-## 6) Минимум фиксации в рабочем ответе
-
-- `Intent`
-- `Risk` (`low` / `medium` / `high`)
-- `Phase` (`explore` / `complete`)
-- `Activated rules/gates` (файлы из `.cursor/rules/`, реально подключённые через `@` или прочитанные)
-
-Без этого маршрутизация считается неполной.
+`Intent` | `Risk` (low/medium/high) | `Activated rules/skills`

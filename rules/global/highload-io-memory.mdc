@@ -1,0 +1,41 @@
+---
+description: Highload I/O и память — async, batch, explicit queries (VPS/backend)
+globs: ["**/backend/**", "**/api/**", "**/workers/**", "**/services/**", "**/*.py", "**/*.go", "**/*.ts", "**/*.js"]
+alwaysApply: false
+---
+
+# Highload I/O & Memory
+
+Применять при intent `performance`, `database`, `api`, backend-`feature` или явном запросе highload/VPS.
+
+## Request path
+
+- I/O (сеть, диск, БД) на hot path — только async/non-blocking.
+- CPU-heavy (большой JSON, crypto, regex) — thread pool / worker, не event loop.
+- Минимизировать аллокации в hot async path.
+
+**Исключения:** CLI, cron, одноразовые утилиты, миграции — sync допустим.
+
+## Data access
+
+- ORM: явные поля, без blind `SELECT *`.
+- Batch/export: cursor/chunk/stream; не держать в RAM >500 записей **или** >N MB за раз (что наступит раньше).
+- **Pagination на больших таблицах:** keyset (`WHERE id > ?` / composite cursor), не OFFSET. OFFSET — только для малых или временных выборок (порог зафиксировать в коде или конфиге).
+- Hot read paths: cache (Redis/in-memory) с коротким TTL.
+
+## Утечки памяти (обязательный контроль)
+
+- Следить за **отсутствием утечек памяти** на request path и в фоновых job.
+- Закрывать: DB rows/cursors, HTTP response body, файлы, транзакции (`defer` / `finally` / RAII по стеку).
+- Goroutine / worker / timer — lifecycle привязан к `context` или shutdown; не fire-and-forget без cancel.
+- In-memory cache (rate limit, session, reauth): **TTL + max size**; периодическая eviction.
+- Frontend: снимать listeners, отменять fetch/AbortController, cleanup в `useEffect`.
+- Go: `go test -race`; при подозрении — goroutine/heap profile (`pprof`).
+- React SPA: не держать большие blob/array в state без необходимости; revokeObjectURL для preview.
+
+## Аудит (только performance / backend highload)
+
+После изменений — кратко (≤3 пункта):
+1. Ресурсы: RAM/CPU на VPS.
+2. Зависимости: почему безопасны для highload.
+3. Риски: bottleneck при ×10 нагрузке.

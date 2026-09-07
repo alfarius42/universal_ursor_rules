@@ -1,27 +1,136 @@
 ---
-description: Всегда обновлять сначала документацию, потом код
-alwaysApply: false
+description: Структура docs, SoT, обязательный gate «docs write → код», machine-readable формат
+alwaysApply: true
 ---
 
-# Сначала документация, потом код
+# Документация проекта
 
-- **Порядок работы:** при любых изменениях в продукте или новой фиче — сначала вносить правки в документацию, затем в код.
-- **Новая функциональность:** описание, API, сценарии, настройки — документировать до написания/изменения кода.
-- **Правки в коде:** если меняется поведение или контракт — сначала обновить релевантный документ (спецификация, гайд, README), потом менять код.
-- Изменения без обновления документации не допускаются. Подробности процесса — в `communication-and-process.mdc`.
+## Каноническая структура (`docs/`)
 
-## Обязательный пакет документов при изменении функционала
+| Файл | Роль | Audience | Когда обновлять |
+|------|------|----------|-----------------|
+| `docs/index.md` | Полный индекс: путь, назначение, audience, SoT?, триггер обновления | agent + human | при любом новом/переименованном doc |
+| `docs/prd.md` | Product SoT: бизнес, роли, FR/NFR (с ID), интеграции (обзор), краткая архитектура + ссылки | agent + human | каждое существенное изменение продукта/кода |
+| `docs/architecture.md` | Детальная архитектура (модули, данные, границы, диаграммы) | agent + human | каждое изменение архитектуры |
+| `docs/api_spec.md` | Полный API-контракт (SoT API) | agent + human | **только** по явной инициативе/согласию пользователя |
+| `docs/support_developer_guide.md` | Гайд поддержки: карта кода, env, безопасность, runbook'и, чек-листы | support + agent | каждое существенное изменение кода |
+| `docs/user_guide.md` | Пошаговые инструкции, кейсы, FAQ — **без** деталей реализации | end user | каждое user-facing изменение |
 
-При **каждом** изменении пользовательско-заметного или контрактного функционала (фронт, бэкенд, админка) в том же цикле обновлять:
+Опционально (добавлять по необходимости, ссылки — в `index.md`):
 
-1. **Пользовательская документация** — основной user-facing гайд проекта (например `docs/USER_GUIDE.md`).
-2. **Документация разработчика / поддержки** — maintenance/runbook документ проекта.
-3. **Спецификация продукта** — PRD/спецификация проекта (см. `primary-source.mdc`).
-4. **TODO и статус** — roadmap/todo/status документ проекта.
+- `docs/decisions.md` — ADR / журнал решений
+- `docs/backlog.md` — roadmap / TODO / статусы
+- `docs/glossary.md` — доменные термины
+- `docs/runbooks/*.md` — узкие ops-runbook'и (выжимки в support guide)
+- `openapi.yaml` (или эквивалент) — машинный контракт; markdown `api_spec.md` описывает семантику и ссылается на него
 
-Дополнительно по смыслу: индекс документации, `CURSOR_CONTEXT.md`, E2E/ручные тест-кейсы — по правилам проекта.
+Алиасы старых имён (если встречаются): `DOCUMENTATION_INDEX.md`→`index.md`, `USER_GUIDE.md`→`user_guide.md`, `DEVELOPER_MAINTENANCE_GUIDE.md`→`support_developer_guide.md`, `ARCHITECTURE.md`→`architecture.md`.
 
-## Связь с fallback
+## Точка входа для агента
 
-- Fallback по `project-rules-bootstrap.mdc` разрешает **выполнение** задачи при отсутствии ожидаемых путей документации.
-- Но **завершение** задачи блокируется, пока не создано/обновлено корректное место документации проекта (или не зафиксирован `pending` с owner и сроком).
+1. Прочитать `docs/index.md` (целиком — он короткий).
+2. По индексу открыть **только** нужный файл и **нужный раздел** (fragment / offset).
+3. Primary sources: `prd.md` (продукт), `architecture.md` (архитектура), `api_spec.md` (API).
+4. Не грузить весь `docs/` сразу. См. `token-economy.mdc`.
+
+Нет `docs/index.md` — создать по шаблону из правила и заполнить ссылками на существующие docs.
+
+## Docs before code — обязательный gate
+
+**Два разных порядка (не путать):**
+
+| Этап | Порядок | Когда |
+|------|---------|-------|
+| **Чтение контекста** | index → primary SoT → код (fragment) | Старт любой задачи |
+| **Внесение изменений** | **сначала docs (write)** → **затем код** | Любое изменение поведения, контракта, scope, архитектуры |
+
+**Запрещено** начинать правки в коде, если SoT-документы ещё не отражают планируемое изменение.
+
+### Когда gate обязателен
+
+- `feature`, `refactor` с изменением поведения или границ модулей → обновить `architecture.md`; инварианты границ — `modular-monolith-boundaries.mdc`
+- `bugfix`, меняющий семантику, контракт или user-visible результат
+- `api`, `database` (схема, миграции, DTO)
+- `planning` / `architecture` — до кода только артефакты решения
+- любой scope / product change
+
+### Порядок изменений (строго)
+
+1. Прочитать `docs/index.md` (или project alias) + релевантные SoT.
+2. **Обновить SoT-docs:** `prd.md` / project SPEC; при арх. изменениях — `architecture.md`; при API — `api_spec.md` **только с согласием** (`api-contract-gate.mdc`); changelogs / ADR / backlog по project rules.
+3. **Затем** код в `src/`, `LK/`, `Map/` и т.д.
+4. Sync вторичных docs: `support_developer_guide.md`, `user_guide.md`, `index.md` при новых файлах.
+5. Тесты (`testing-and-testcases.mdc`).
+
+### Project-specific paths
+
+Если в репозитории нет `docs/`, а есть project layout (`project-docs/`, `DOCUMENTATION_INDEX.md`, `FULL_SPEC.md`, domain `SPEC.md` / `ARCHITECTURE.md`) — **project rules имеют приоритет по путям**, но gate **«docs write → код»** остаётся обязательным. Алиасы имён — см. выше.
+
+### Исключения (код без предварительного SoT-update)
+
+| Случай | Условие |
+|--------|---------|
+| Typo / format / lint-only | Нет изменения поведения |
+| Pure internal refactor | Наблюдаемое поведение и контракт не меняются; без новых межмодульных импортов (`modular-monolith-boundaries.mdc` § «Когда применять»); `architecture.md` / support guide — sync до DoD |
+| Emergency hotfix | Код допустим первым **только** если пользователь явно просит срочный fix; SoT + changelog — **в той же сессии/PR до «готово»** |
+
+В финальном ответе явно указать: **какие docs обновлены до кода**, какие — после (и почему).
+
+## Порядок работы (сводка)
+
+1. **Docs before code** — gate выше.
+2. Новая фича: FR/сценарии в `prd.md` (+ `api_spec.md` если API, только с согласием) → **код** → `support_developer_guide.md` + `user_guide.md` → `index.md` при новых файлах.
+3. Поведение/контракт: обновить SoT → код → sync зависимых docs.
+
+## Source of Truth и синхронизация
+
+- **Продукт / FR / NFR:** `prd.md`
+- **Архитектура (детали):** `architecture.md` — краткий раздел в `prd.md` обязан совпадать по смыслу; правка одного → актуализация другого в том же цикле
+- **API:** `api_spec.md` (+ OpenAPI при наличии). Менять API в коде без обновления `api_spec.md` — запрещено. Менять `api_spec.md` — только с явным согласием пользователя (`api-contract-gate.mdc`)
+- **Support-операционка:** `support_developer_guide.md` (не дублировать длинные куски из architecture/api — ссылки)
+- **Пользователь:** `user_guide.md` — без путей кода, схем БД, внутренних API
+
+`prd.md` и `support_developer_guide.md` описывают **текущий репозиторий + согласованное будущее** (явно помечать `status: now | next | later`).
+
+## Обязательные блоки `support_developer_guide.md`
+
+1. Точка входа (куда смотреть: architecture, spec/prd, backlog, index, project rules)
+2. Что реализовано — слои + пути в коде / API / сервисы
+3. Безопасность — секреты, auth, изоляция клиентов, лимиты
+4. Окружение — env, БД/миграции, support-скрипты
+5. Запуск и тесты — dev/build/test/ci + smoke
+6. Карта документации — какой гайд за что (без дублирования деталей)
+7. Доменные runbook'и — что проверить после деплоя
+8. Чек-лист новой фичи — spec/prd → architecture (если нужно) → код → support/user guide → тесты → этот guide
+9. Расхождения и hardening — устаревшее, SoT, pre-release checks
+
+## Machine + human readability
+
+Каждый doc:
+
+```yaml
+---
+doc_id: prd
+title: Product Requirements
+status: active
+last_updated: YYYY-MM-DD
+source_of_truth_for: [product, functional_requirements, nfr]
+related: [architecture.md, api_spec.md, index.md]
+---
+```
+
+- Стабильные заголовки и ID требований: `FR-001`, `NFR-001`, `ADR-001`
+- Таблицы/списки вместо простыней; один раздел — одна тема
+- В `index.md` — таблица со всеми docs (включая опциональные и runbooks)
+- Язык `user_guide.md`: по умолчанию русский (если проект не задаёт иное)
+
+## Блокирующие условия
+
+- **Код начат до обновления SoT-docs** при изменении поведения, контракта, scope или архитектуры (gate «docs before code»)
+- Нет/не обновлён `docs/index.md` (или project index) при появлении нового doc
+- Существенное изменение кода без предшествующего или синхронного обновления `prd.md` / project SPEC
+- К концу задачи нет sync `support_developer_guide.md` и/или `user_guide.md` где применимо
+- Изменение архитектуры без sync `architecture.md` ↔ раздел в `prd.md`
+- Изменение API без согласия пользователя и записи в `api_spec.md`
+- Дублирование полного API/архитектуры в нескольких файлах без ссылок на SoT
+- Hotfix без последующего обновления docs в той же сессии/PR

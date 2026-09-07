@@ -1,32 +1,26 @@
 ---
-description: Обязательный review packet для high-risk задач
+description: High-risk review packet + обязательные ссылки в финальном ответе
 alwaysApply: false
 ---
 
 # High-Risk Review Packet
 
-Если в репозитории есть **`high-risk-review-packet.local.mdc`** (пути к ADR-lite, чеклистам, абсолютные пути для CI), при high-risk задаче подключать его через `@` вместе с этим файлом или вместо дублирования содержимого.
-
 ## Когда обязательно
 
-- Любые high-risk изменения: auth, billing/payments, API contracts, database migrations, tenant isolation, critical performance paths.
+Auth, billing/payments, API contracts, DB migrations, tenant isolation, critical performance paths, **новые межмодульные связи / изменение границ модулей** (`modular-monolith-boundaries.mdc`).
 
 ## Обязательные артефакты
 
 - ADR-lite (решение, альтернативы, trade-offs, rollback).
-- Threat-model mini (минимум 3 угрозы + mitigation).
+- Threat-model mini (≥3 угрозы + mitigation).
 - Domain gotchas register (проверка/обновление).
 - High-risk review checklist (статус прохождения).
 
-## Требования к процессу
+## Финальный ответ
 
-- Артефакты создаются/обновляются в документации проекта.
-- Ссылки на артефакты указываются в финальном отчёте по задаче.
-- При отсутствии артефактов high-risk задача не считается завершённой.
+Блок `HighRiskFinalAnswerLinks` со ссылками на все 4 артефакта выше.
 
 ## Блокирующие условия
 
-- Нет ADR-lite.
-- Нет threat-model mini.
-- Нет checklist статуса.
-- Нет rollback/mitigation плана.
+- Нет любого из артефактов или rollback/mitigation плана.
+- High-risk задача без ссылок в финальном ответе.

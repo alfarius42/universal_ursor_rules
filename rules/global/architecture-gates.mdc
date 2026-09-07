@@ -1,0 +1,59 @@
+---
+description: Архитектура и planning — контекст, NFR, monolith-first, coupling, observability, fitness, gateway
+alwaysApply: false
+---
+
+# Architecture Gates
+
+Применять при Intent `planning` | `architecture` | крупный `refactor`. ADR-журнал — отдельно: `architecture-decision-log.mdc`. Границы модулей in-process — `modular-monolith-boundaries.mdc`.
+
+## 1. Planning gate (до решения)
+
+- Контекст: продуктовый doc, ARCHITECTURE, индекс docs.
+- **Context Snapshot:** стадия, команда, сроки, нагрузка, SLA/security/tenant, текущие боли.
+- **Problem Statement** + **Why Now** + **Not Solving**.
+- Проблема подтверждена evidence; иначе `ASSUMPTION` + минимальное решение.
+- ≥2 альтернативы, trade-offs, влияние на API/данные/security/i18n/тесты.
+- Backward compatible или план миграции; план верификации.
+- NFR (≥5): reliability, performance, scalability, security, time-to-market — с приоритетами и `improves/neutral/degrades` по альтернативам.
+
+## 2. Monolith first
+
+- Default: модульный монолит. Микросервисы — только при ≥2 триггерах (независимые релизы, разная нагрузка, fault isolation, org boundaries, limits монолита).
+- AI предлагает варианты; **решение человека** (`approved`/`rejected`/`pending`).
+- Оценка операционной цены: observability, тесты, CI/CD, оркестрация, security.
+
+## 3. Coupling / cohesion
+
+- Фиксировать новые/удалённые межмодульные связи; только через публичный API модуля.
+- Блок: циклические deps, god-module, imports во внутренности чужого модуля.
+- Детали in-process API, Repository/DTO, fitness checks — `modular-monolith-boundaries.mdc`.
+
+## 4. Observability (новые компоненты)
+
+- SLI/SLO или baseline; latency/error/throughput; structured logs + correlation id; traces где уместно.
+- Алерты + runbook для критичных путей.
+
+## 5. Fitness functions
+
+- Автопроверки инвариантов: границы модулей (`modular-monolith-boundaries.mdc` §6), API contracts, tenant isolation, perf/security smoke.
+- Pass/fail в CI или локальной команде; падение блокирует задачу.
+
+## 6. API Gateway (если есть)
+
+- Только cross-cutting: auth, **rate limit** (единая точка для публичного API), routing, errors, observability.
+- Доменная логика в Gateway запрещена (исключение — owner + срок + ADR).
+- Без gateway: rate limit на уровне app middleware по `api-contract-gate.mdc` §1.1.
+
+## 7. Evolutionary runway
+
+- `tactical now` + `strategic runway` (1–2 квартала).
+- Shortcuts: owner + срок возврата.
+
+## 8. Артефакты при принятии решения
+
+`docs/architecture.md`, `docs/support_developer_guide.md`, `docs/prd.md`, `docs/backlog.md`, `docs/decisions.md`.
+
+## Блокирующие условия
+
+Нет Context Snapshot / альтернатив / NFR / trade-offs / верификации / human decision (architecture) / observability (новый компонент) / fitness check (арх. изменение).

@@ -26,10 +26,8 @@ jobs:
             print("No .mdc files found under rules/")
             sys.exit(0)
 
-          # Block only machine-specific absolute paths.
-          # URLs (https://...) are allowed and ignored.
           patterns = [
-            re.compile(r"(?<![A-Za-z0-9+.-])([A-Za-z]:[\\/](?!/)[^\s`\"')\]]+)"),  # C:\... or D:/...
+            re.compile(r"(?<![A-Za-z0-9+.-])([A-Za-z]:[\\/](?!/)[^\s`\"')\]]+)"),
             re.compile(r"(?<!https:)(?<!http:)(/Users/[^\s`\"')\]]+)"),
             re.compile(r"(?<!https:)(?<!http:)(/home/[^\s`\"')\]]+)"),
             re.compile(r"(%USERPROFILE%[\\/][^\s`\"')\]]+)"),

@@ -1,0 +1,102 @@
+---
+description: Модульный монолит — in-process API, границы импортов, DTO, ports/adapters, fitness checks
+alwaysApply: false
+---
+
+# Modular Monolith Boundaries
+
+**Инвариант:** границы модулей **не размываются** — каждый новый import, shared helper или cross-table access должен укреплять границу, а не обходить её «для удобства».
+
+## Когда применять
+
+**Intent:** `architecture` | `feature` | `refactor` | `planning`
+
+**И дополнительно хотя бы одно:**
+
+- новая или изменённая **межмодульная связь** (импорт между доменными пакетами/namespace);
+- затронуты **Service / Repository / Controller / Handler** и кто кого вызывает;
+- меняется **структура `src/`** (новый модуль, перенос файлов, переименование пакета);
+- добавляется **cross-table read/write** или read-model поверх чужих таблиц;
+- рефакторинг с риском **протекания persistence** (Repository, ORM, сырые row-массивы) наружу модуля.
+
+**Не применять:** изолированная правка внутри одного модуля без новых импортов наружу/извне; чисто UI/CSS; docs-only; правки только HTTP API с frontend — достаточно `api-contract-gate.mdc`.
+
+Связано: `architecture-gates.mdc` §2–§3, `api-contract-gate.mdc` (HTTP-контракты снаружи монолита).
+
+## 1. Два вида «API» (не путать)
+
+| Вид | Где | Что это |
+|-----|-----|---------|
+| **In-process API модуля** | Внутри одного процесса/деплоя | Публичные методы `*Service`, фасада или интерфейса модуля — прямой вызов в памяти |
+| **HTTP/RPC API** | Между процессами, frontend, внешние системы | REST/GraphQL/gRPC/webhook — см. `api-contract-gate.mdc` |
+
+Default для модульного монолита: **модули общаются in-process**, не через сеть друг с другом.
+
+## 2. Публичная поверхность модуля
+
+Каждый модуль (пакет/namespace/папка домена) имеет **явную публичную границу**:
+
+- **Разрешено импортировать снаружи:** `*Service`, публичный фасад, интерфейс контракта, value objects / DTO модуля, доменные типы без persistence.
+- **Запрещено импортировать снаружи:** `*Repository`, `*Mapper` persistence, `internal/*`, helpers реализации, SQL/ORM-сущности.
+
+**Правило слоя:** Controller / UI / Handler → только **Service (или фасад)** своего или чужого модуля, **не** чужой Repository.
+
+**Composition root** (bootstrap, DI-контейнер, `Application.php`, `main`) — единственное место, где собирается полный граф конкретных классов.
+
+## 3. DTO на границе модуля
+
+- Модуль **не отдаёт наружу** ORM-модели, Eloquent entities, сырые строки БД как публичный контракт (`array<string,mixed>` без зафиксированной формы).
+- На границе — **DTO**: простые immutable-структуры (класс, record, typed array с контрактом в types/PHPDoc/OpenAPI).
+- Внутри модуля Repository → domain/DTO mapping остаётся private.
+- **Read-model exception:** осознанный cross-table JOIN / CQRS read-side допустим в одном месте (admin/reporting), если задокументирован в ARCHITECTURE и не используется для записи в чужие таблицы.
+
+## 4. Ports & Adapters (Dependency Inversion)
+
+- Модуль-потребитель объявляет **port** (интерфейс) того, что ему нужно от внешнего мира или другого модуля.
+- Модуль-поставщик или infra-слой реализует **adapter**.
+- Интерфейс обязателен, когда: подмена реализации (payment, mail, storage), тестирование с mock, или модуль реально изолирован.
+- Интерфейс **не обязателен** на каждый Service в маленьком монолите — достаточно дисциплины импортов; не over-engineer.
+
+## 5. Запреты (блок при code review / CI)
+
+- Циклические зависимости между модулями.
+- `ModuleA` → `ModuleB.internal.*` или `ModuleB.*Repository`.
+- Controller/UI → чужой Repository.
+- Прямая запись в таблицы, «владельцем» которых является другой модуль, минуя его Service.
+- Протекание persistence-деталей (column names, ORM relations) в соседний модуль.
+
+## 6. Fitness functions (автопроверки границ)
+
+Язык и инструмент — в **project rules**; глобально требование:
+
+- Правила зависимостей **должны быть автоматизированы** и гоняться в CI (или локальной quality-команде).
+- Падение = блок merge.
+
+| Стек | Типичный инструмент |
+|------|---------------------|
+| PHP | Deptrac |
+| TypeScript / JS (Nx) | ESLint `import/no-restricted-paths`, Nx module boundaries |
+| Python | import-linter |
+| Java / Kotlin | ArchUnit |
+| C# / .NET | NetArchTest |
+| Go | `internal/` package + custom dep check |
+
+Минимум правил в проекте: слой → Service only; запрет cross-module Repository; whitelist для composition root и задокументированных read-models.
+
+## 7. Async-граница
+
+Side effects между модулями (email, export, webhook processing) — через **очередь/события** с typed payload (job type + DTO), не через синхронный deep call chain без необходимости.
+
+## 8. Global → Local
+
+- Это правило задаёт **инварианты** модульного монолита.
+- Конкретные пакеты, Deptrac-конфиг, имена `*Service`/`*Repository` — в `.cursor/rules` и `ARCHITECTURE.md` проекта.
+- HTTP API frontend↔backend — по-прежнему `api-contract-gate.mdc`.
+
+## Блокирующие условия
+
+- Новая межмодульная связь без фиксации в ARCHITECTURE.
+- Импорт чужого Repository из UI/Controller.
+- Изменение публичного in-process API без обновления callers/tests.
+- Добавление cross-module dep без fitness check (или `ASSUMPTION` + срок возврата).
+- **Размывание границ:** общий `utils`/`common` с доменной логикой; прямой доступ к чужим таблицам; export internal types соседнему модулю.

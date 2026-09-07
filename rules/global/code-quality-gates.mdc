@@ -32,10 +32,22 @@ alwaysApply: false
    - В CI должен быть отдельный шаг quality gate (агрегатор проверок).
    - Gate должен падать при нарушении порогов.
 
-4. **Backward compatibility gate** (при изменении публичных контрактов: API, DTO, события, версии пакетов, формат данных)
+4. **High-risk review packet gate** — см. `high-risk-review-packet.mdc` (артефакты + ссылки в финальном ответе).
+
+5. **Backward compatibility gate** (при изменении публичных контрактов: API, DTO, события, версии пакетов, формат данных)
    - Следовать `deprecation-and-backward-compatibility.mdc` и при наличии API — `api-contract-gate.mdc`.
    - В финальном ответе/описании задачи перечислено, что подтверждает совместимость (тесты, типы, сценарий миграции при breaking).
    - Завершение задачи при изменении контракта без этой фиксации — нарушение DoD.
+
+6. **Module boundary gate** (при новых/изменённых межмодульных связях, Service/Repository, структуре `src/`)
+   - Следовать `modular-monolith-boundaries.mdc`.
+   - **Не размывать границы модулей** — без «удобных» cross-imports, shared domain helpers, чужих Repository.
+   - Зафиксировать импорты: Controller/UI → Service only; без чужих Repository.
+   - Fitness check (Deptrac / import-linter / ArchUnit) — по project rules; при отсутствии — `ASSUMPTION` + срок.
+
+7. **Memory leak gate** (backend, workers, long-lived SPA state, in-memory caches)
+   - Следовать `highload-io-memory.mdc` § «Утечки памяти».
+   - Явно проверить закрытие ресурсов и cancel lifecycle; при goroutine/async — кто останавливает при shutdown.
 
 ## Исключения
 

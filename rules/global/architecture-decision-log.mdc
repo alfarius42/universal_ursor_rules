@@ -1,51 +1,33 @@
 ---
-description: Фиксация решений человека по архитектуре в журнале CURRENT_DECISIONS.md по единому шаблону
+description: ADR и журнал архитектурных решений — шаблон, статусы, срок пересмотра
 alwaysApply: false
 ---
 
-# Architecture Decision Log
+# Architecture Decision Log (ADR)
 
-## 1) Назначение
+## Назначение
 
-Для каждой архитектурной задачи фиксировать итоговое решение человека в журнале решений проекта (например, `docs/active/CURRENT_DECISIONS.md` или `docs/architecture/CURRENT_DECISIONS.md`).
+Фиксировать значимые архитектурные решения. AI предлагает варианты; финал — после подтверждения человека.
 
-AI формирует варианты и рекомендации, но финальная фиксация решения выполняется только после явного подтверждения человека.
+Журнал проекта: `docs/decisions.md` (предпочтительно) или legacy `docs/active/CURRENT_DECISIONS.md`.
 
-## 2) Обязательные статусы
+## Обязательные поля ADR / записи
 
-Использовать только:
+- `title`, `decision_id`, `date`, `owner`, `status`
+- `context`, ограничения, `options_considered` (≥2)
+- принятое решение, `rationale`, последствия, риски
+- план верификации, rollback/mitigation
+- `review_date`, `expiry_condition` (событие пересмотра)
+- `links` (spec, architecture, задача; при межмодульных решениях — `modular-monolith-boundaries.mdc`)
 
-- `approved`
-- `rejected`
-- `pending`
+## Статусы
 
-Если решение человека не получено, статус обязательно `pending`.
+ADR: `proposed` | `accepted` | `superseded` | `deprecated` | `rejected`
 
-## 3) Единый шаблон записи
+Журнал решений: `approved` | `rejected` | `pending`
 
-Каждая запись в журнале должна содержать:
+## Блокирующие условия
 
-- `decision_id`
-- `date`
-- `topic`
-- `options_considered` (минимум 2)
-- `ai_recommendation`
-- `human_decision` (`approved`/`rejected`/`pending`)
-- `decision_owner`
-- `rationale`
-- `risks`
-- `next_review_date`
-- `links` (ADR/спецификация/архитектура/задача)
-
-## 4) Процесс фиксации
-
-1. AI описывает альтернативы и trade-offs.
-2. Человек выбирает вариант или откладывает решение.
-3. В журнал решений добавляется запись по шаблону.
-4. Если решение `approved`, синхронизируются релевантные документы (`ARCHITECTURE`, спецификация, support guide).
-
-## 5) Блокирующие условия
-
-- Архитектурная задача завершена без записи в журнал решений.
-- В записи нет явного `human_decision`.
-- Использован статус вне `approved/rejected/pending`.
+- Существенное решение без ADR/записи в журнале.
+- Нет `review_date` / `expiry_condition` / явного `human_decision`.
+- `approved` без синхронизации ARCHITECTURE/spec/support docs.

@@ -1,0 +1,37 @@
+---
+description: Отказоустойчивость и dependency diet для backend
+globs: ["**/backend/**", "**/integrations/**", "**/api/**", "**/services/**", "**/*.py", "**/*.go", "**/*.ts", "**/*.js"]
+alwaysApply: false
+---
+
+# Resilience & Dependency Diet
+
+Применять при intent `performance`, `api`, backend-`feature`, интеграциях или явном запросе highload/VPS.
+
+## Хрупкие зависимости
+
+- Внешние API, платежи, тяжёлые парсеры — circuit breaker или feature flag.
+- Kill switch через конфиг без рестарта процесса.
+
+**Не требуется** для: статики, локальных файлов, trivial healthcheck.
+
+## Rate limit (защита VPS)
+
+Для endpoint'ов, которые жгут CPU/RAM/IOPS или открыты наружу без жёсткой auth:
+
+- export / bulk / report / search / upload / webhook ingress — **обязателен** rate limit (per IP, per user или per API key).
+- Лимит до тяжёлой работы (до запроса к БД/диску), не после.
+- Ответ `429` + `Retry-After` где возможно; не блокировать event loop подсчётом.
+- Переиспользовать middleware/gateway проекта; не плодить ad-hoc счётчики.
+
+**Не требуется** для: internal-only за VPN/mTLS, healthcheck, статики.
+
+## Зависимости
+
+- Функция ≤10 строк и без security/crypto/parsing untrusted input → нативно.
+- Иначе — пакет, но import конкретного модуля (tree-shaking).
+- Не тянуть тяжёлый пакет ради 1–2 вызовов.
+
+## Ошибки
+
+- `try/catch` с логированием `error`/`warn` на границах I/O и интеграций.

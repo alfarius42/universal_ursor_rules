@@ -1,0 +1,56 @@
+---
+description: Разделение global vs project rules — в project только стек и домен
+alwaysApply: true
+---
+
+# Project Rules Scope
+
+## Слои контекста (порядок при конфликте)
+
+1. **User Rules** — git, PR, стиль, безопасность git.
+2. **Global** `~/.cursor/rules/` — orchestrator, intent routing, docs, DoD, token-economy, quality gates, process.
+3. **Project** `<repo>/.cursor/rules/` — **только стек + домен** репозитория.
+4. **Skills** `~/.cursor/skills/` или `<repo>/.cursor/skills/` — по задаче.
+
+При конфликте: **project > global**, кроме git safety из User Rules.
+
+## Global (этот репозиторий → `~/.cursor/rules/`)
+
+- Оркестрация: `cursor-orchestrator.mdc`, `task-intent-routing.mdc`
+- Контекст и docs: `documentation-first.mdc`, `token-economy.mdc`
+- Завершение: `definition-of-done-gates.mdc`, `risk-scoring-and-review-depth.mdc`
+- Quality / architecture / API gates (по интенту через `@`)
+- Универсальный process: git-формат, CI-паттерны, anti-hallucination — **без** project-specific путей и команд
+
+## Project rules (`<repo>/.cursor/rules/`)
+
+**Только:**
+
+| Категория | Примеры |
+|-----------|---------|
+| **Стек** | `frontend-react-best-practices.mdc`, `backend-best-practices.mdc`, `vanilla-site.mdc` — globs, lint/test/build команды, file layout |
+| **Домен** | интеграции (СБИС, YooKassa), бизнес-термины, tenant-модель, product copy |
+| **Локальные overrides** | `*.local.mdc` — пути docs, CI-команды, high-risk paths, machine-check артефакты |
+
+## Что НЕ копировать в project rules
+
+- Orchestrator, intent routing, DoD, token economy
+- Universal quality/architecture/API gates из global
+- Process rules, уже покрытые global (дублирование создаёт конфликты)
+
+**Исключение:** `*.local.mdc` в project — намеренный override global формулировки (пути, CI, стек).
+
+## Установка в новый проект
+
+1. Скопировать все `rules/global/*.mdc` → `~/.cursor/rules/` (один раз на машину).
+2. В `<repo>/.cursor/rules/` создать **минимальный** набор:
+   - 1–2 файла стека (по фактическому стеку репо);
+   - domain-файлы и/или skills в `<repo>/.cursor/skills/`;
+   - `*.local.mdc` — если нужны project-specific пути/CI.
+3. Не копировать весь global pack в project — global уже активен через Cursor User rules.
+
+## Проверка
+
+- Project rules содержат **только** stack/domain/local overrides?
+- Нет дублей orchestrator / DoD / intent routing в project?
+- Domain-интеграции — в project skills, не в global rules?

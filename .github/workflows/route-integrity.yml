@@ -43,8 +43,6 @@ jobs:
               if ref.startswith("./rules/global/"):
                 target = Path(ref[2:])
               elif "/" in ref:
-                # Path-like reference outside global rules (docs/source files).
-                # Not a route-integrity target for rule existence check.
                 continue
               else:
                 target = Path("rules/global") / ref
